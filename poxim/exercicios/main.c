@@ -19,13 +19,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    uint32_t instruction;
-
-    for (size_t i = 0; i < 101; i++) {
-        instruction = fetch(&cpu);
+    while (!cpu.halted) {
+        uint32_t instruction = fetch(&cpu);
         execute(&cpu, instruction, output);
     }
-    
+
+    fclose(output);
 
     return 0;
 }

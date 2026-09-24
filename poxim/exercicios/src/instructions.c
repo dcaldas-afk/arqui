@@ -203,8 +203,11 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                         uint32_t a = cpu->reg[rs1];
                         uint32_t b = cpu->reg[rs2];
                         uint32_t value = (int32_t)a < (int32_t)b;
-
-                        trace_r_op(output, current_pc, "slt", rd, rs1, rs2, a, b, value, "<");
+                        
+                        char operands[64];
+                        snprintf(operands, sizeof(operands), "%s,%s,%s", reg_name(rd), reg_name(rs1), reg_name(rs2));
+                        trace_begin(output, current_pc, "slt", operands);
+                        fprintf(output, "%s=(0x%08x<0x%08x)=%u\n", reg_name(rd), a, b, value);
                         set_reg(cpu, rd, value);
                     }
                     if (funct7 == 0x01) {
@@ -223,7 +226,10 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                         uint32_t b = cpu->reg[rs2];
                         uint32_t value = a < b;
 
-                        trace_r_op(output, current_pc, "sltu", rd, rs1, rs2, a, b, value, "<");
+                        char operands[64];
+                        snprintf(operands, sizeof(operands), "%s,%s,%s", reg_name(rd), reg_name(rs1), reg_name(rs2));
+                        trace_begin(output, current_pc, "sltu", operands);
+                        fprintf(output, "%s=(0x%08x<0x%08x)=%u\n", reg_name(rd), a, b, value);
                         set_reg(cpu, rd, value);
                     }
                     if (funct7 == 0x01) {
@@ -296,7 +302,7 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                         char operands[64];
                         snprintf(operands, sizeof(operands), "%s,%s,%s", reg_name(rd), reg_name(rs1), reg_name(rs2));
                         trace_begin(output, current_pc, "sra", operands);
-                        fprintf(output, "%s=0x%08x>>%u=0x%08x\n", reg_name(rd), a, shift, value);
+                        fprintf(output, "%s=0x%08x>>>%u=0x%08x\n", reg_name(rd), a, shift, value);
                         set_reg(cpu, rd, value);
                     }
                     break;
@@ -401,7 +407,10 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                     uint32_t a = cpu->reg[rs1];
                     uint32_t value = (int32_t)a < imm;
 
-                    trace_i_op(output, current_pc, "slti", rd, rs1, imm12, a, (uint32_t)imm, value, "<");
+                    char operands[64];
+                    snprintf(operands, sizeof(operands), "%s,%s,0x%03x", reg_name(rd), reg_name(rs1), imm12);
+                    trace_begin(output, current_pc, "slti", operands);
+                    fprintf(output, "%s=(0x%08x<0x%08x)=%u\n", reg_name(rd), a, (uint32_t)imm, value);
                     set_reg(cpu, rd, value);
                     break;
                 }
@@ -410,8 +419,10 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                     uint32_t a = cpu->reg[rs1];
                     uint32_t value = a < (uint32_t)imm;
 
-                    trace_i_op(output, current_pc, "sltiu", rd, rs1, imm12, a, (uint32_t)imm, value, "<");
-                    set_reg(cpu, rd, value);
+                    char operands[64];
+                    snprintf(operands, sizeof(operands), "%s,%s,0x%03x", reg_name(rd), reg_name(rs1), imm12);
+                    trace_begin(output, current_pc, "sltiu", operands);
+                    fprintf(output, "%s=(0x%08x<0x%08x)=%u\n", reg_name(rd), a, (uint32_t)imm, value);                    set_reg(cpu, rd, value);
                     break;
                 }
                 case 0x4: {
@@ -440,7 +451,7 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                         char operands[64];
                         snprintf(operands, sizeof(operands), "%s,%s,%u", reg_name(rd), reg_name(rs1), shamt);
                         trace_begin(output, current_pc, "srai", operands);
-                        fprintf(output, "%s=0x%08x>>%u=0x%08x\n", reg_name(rd), a, shamt, value);
+                        fprintf(output, "%s=0x%08x>>>%u=0x%08x\n", reg_name(rd), a, shamt, value);
                         set_reg(cpu, rd, value);
                     }
                     break;
