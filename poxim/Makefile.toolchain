@@ -1,0 +1,195 @@
+#
+# Poxim-V toolchain makefile
+# 
+# (C) Copyright 2024 Bruno Otavio Piedade Prado
+#
+# This file is part of Poxim-V.
+#
+# Poxim-V is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Poxim-V is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Poxim-V.  If not, see <https://www.gnu.org/licenses/>.
+#
+
+#------------------------------------------------------------------------------
+# Toolchain versions and sources
+#------------------------------------------------------------------------------
+BINUTILS_VERSION       := 2.44
+GCC_VERSION            := 15.1.0
+GDB_VERSION            := 16.3
+NEWLIB_VERSION         := 4.5.0.20241231
+QEMU_VERSION           := 10.0.0
+BINUTILS_SOURCE        := http://gnu.c3sl.ufpr.br/ftp/binutils/binutils-$(BINUTILS_VERSION).tar.xz
+GCC_SOURCE             := http://gnu.c3sl.ufpr.br/ftp/gcc/gcc-$(GCC_VERSION)/gcc-$(GCC_VERSION).tar.xz
+GDB_SOURCE             := http://gnu.c3sl.ufpr.br/ftp/gdb/gdb-$(GDB_VERSION).tar.xz
+NEWLIB_SOURCE          := ftp://sourceware.org/pub/newlib/newlib-$(NEWLIB_VERSION).tar.gz
+QEMU_SOURCE            := https://download.qemu.org/qemu-$(QEMU_VERSION).tar.xz
+#------------------------------------------------------------------------------
+# Toochain build parameters
+#------------------------------------------------------------------------------
+C_COMPILER             := gcc
+CXX_COMPILER           := g++
+DOWNLOAD               := curl -O -L --progress-bar
+NUMBER_OF_CORES        := $(shell grep -c processor /proc/cpuinfo)
+ROOT_DIRECTORY         := $(shell pwd)
+SHELL                  := /bin/bash
+TARGET                 := riscv32-elf
+BUILD_DIRECTORY        := $(ROOT_DIRECTORY)/.build
+INSTALL_PREFIX         := $(ROOT_DIRECTORY)/poxim-v
+TOOLCHAIN_SOURCE       := $(BINUTILS_SOURCE) $(GCC_SOURCE) $(NEWLIB_SOURCE) $(GDB_SOURCE) $(QEMU_SOURCE)
+BINUTILS_CONFIGURATION := --prefix=$(INSTALL_PREFIX) --disable-atomic --disable-float --disable-nls --target=$(TARGET) --with-pkgversion=Poxim-V
+GCC_CONFIGURATION      := $(BINUTILS_CONFIGURATION) --disable-libgomp --disable-libquadmath --disable-libffi --disable-libssp --disable-libmudflap --disable-decimal-float --disable-libstdcxx-pch --disable-shared --disable-tls --enable-languages=c,c++ --enable-multilib --enable-threads=single --with-gmp --with-mpc --with-mpfr --with-newlib --with-gnu-as --with-gnu-ld --with-system-zlib
+GDB_CONFIGURATION      := $(BINUTILS_CONFIGURATION) --with-expat --with-guile=no --with-system-readline
+NEWLIB_CONFIGURATION   := $(BINUTILS_CONFIGURATION) --disable-newlib-supplied-syscalls --enable-newlib-io-c99-formats --enable-newlib-io-long-long --enable-newlib-io-long-double --enable-newlib-io-float
+QEMU_CONFIGURATION     := --prefix=$(INSTALL_PREFIX) --target-list=riscv32-softmmu
+#------------------------------------------------------------------------------
+.SILENT:
+#------------------------------------------------------------------------------
+all:
+	cat INFO;
+	printf "Available options:\n";
+	printf "%s build: build the toolchain for Poxim-V\n" "-";
+	printf "%s clean: remove all built and downloaded files\n" "-";
+	printf "\n";
+#------------------------------------------------------------------------------
+define dependencies
+	c_compiler_missing=`type $(C_COMPILER) > /dev/null 2>&1; echo $$?`;\
+	cxx_compiler_missing=`type $(CXX_COMPILER) > /dev/null 2>&1; echo $$?`;\
+	curl_missing=`type curl > /dev/null 2>&1; echo $$?`;\
+	expat_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lexpat > /dev/null 2>&1; echo $$?`;\
+	git_missing=`type git > /dev/null 2>&1; echo $$?`;\
+	glib2_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lglib-2.0 > /dev/null 2>&1; echo $$?`;\
+	gmp_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lgmp > /dev/null 2>&1; echo $$?`;\
+	mpc_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lmpc > /dev/null 2>&1; echo $$?`;\
+	mpfr_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lmpfr > /dev/null 2>&1; echo $$?`;\
+	m4_missing=`type m4 > /dev/null 2>&1; echo $$?`;\
+	ninja_missing=`type ninja > /dev/null 2>&1; echo $$?`;\
+	pkgconfig_missing=`type pkg-config > /dev/null 2>&1; echo $$?`;\
+	python3_venv_missing=`python3 -m ensurepip -h > /dev/null 2>&1; echo $$?`;\
+	python3_setuptools_missing=`python3 -c "import setuptools" > /dev/null 2>&1; echo $$?`;\
+	python3_tomli_missing=`python3 -c "import tomli" > /dev/null 2>&1; echo $$?`;\
+	readline_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lreadline > /dev/null 2>&1; echo $$?`;\
+	sed_missing=`type sed > /dev/null 2>&1; echo $$?`;\
+	texinfo_missing=`type makeinfo > /dev/null 2>&1; echo $$?`;\
+	zlib_missing=`echo "int main(){}" | $(C_COMPILER) -o /dev/null -x c - -lz > /dev/null 2>&1; echo $$?`;\
+	if [ $$c_compiler_missing -ne 0 ] || [ $$cxx_compiler_missing -ne 0 ] || [ $$curl_missing -ne 0 ] || [ $$expat_missing -ne 0 ] || [ $$git_missing -ne 0 ] || [ $$glib2_missing -ne 0 ] || [ $$gmp_missing -ne 0 ] || [ $$mpc_missing -ne 0 ] || [ $$mpfr_missing -ne 0 ] || [ $$m4_missing -ne 0 ] || [ $$ninja_missing -ne 0 ] || [ $$pkgconfig_missing -ne 0 ] || [ $$python3_venv_missing -ne 0 ] || [ $$python3_setuptools_missing -ne 0 ] || [ $$python3_tomli_missing -ne 0 ] || [ $$readline_missing -ne 0 ] || [ $$sed_missing -ne 0 ] || [ $$texinfo_missing -ne 0 ] || [ $$zlib_missing -ne 0 ]; then \
+		printf "> Missing dependencies:";\
+		if [ $$c_compiler_missing -ne 0 ]; then printf " gcc"; fi;\
+		if [ $$cxx_compiler_missing -ne 0 ]; then printf " g++"; fi;\
+		if [ $$curl_missing -ne 0 ]; then printf " curl"; fi;\
+		if [ $$expat_missing -ne 0 ]; then printf " expat"; fi;\
+		if [ $$git_missing -ne 0 ]; then printf " git"; fi;\
+		if [ $$glib2_missing -ne 0 ]; then printf " glib2"; fi;\
+		if [ $$gmp_missing -ne 0 ]; then printf " gmp"; fi;\
+		if [ $$mpc_missing -ne 0 ]; then printf " mpc"; fi;\
+		if [ $$mpfr_missing -ne 0 ]; then printf " mpfr"; fi;\
+		if [ $$m4_missing -ne 0 ]; then printf " m4"; fi;\
+		if [ $$ninja_missing -ne 0 ]; then printf " ninja"; fi;\
+		if [ $$pkgconfig_missing -ne 0 ]; then printf " pkg-config"; fi;\
+		if [ $$python3_venv_missing -ne 0 ]; then printf " python3-venv"; fi;\
+		if [ $$python3_setuptools_missing -ne 0 ]; then printf " python3-setuptools"; fi;\
+		if [ $$python3_tomli_missing -ne 0 ]; then printf " python3-tomli"; fi;\
+		if [ $$readline_missing -ne 0 ]; then printf " readline"; fi;\
+		if [ $$sed_missing -ne 0 ]; then printf " sed"; fi;\
+		if [ $$texinfo_missing -ne 0 ]; then printf " texinfo"; fi;\
+		if [ $$zlib_missing -ne 0 ]; then printf " zlib"; fi;\
+		printf "\n";\
+		exit 1;\
+	fi;
+endef
+#------------------------------------------------------------------------------
+define binutils
+	printf "  > binutils $(BINUTILS_VERSION)\n";\
+	mkdir -p $(BUILD_DIRECTORY)/binutils;\
+	rm -rf $(BUILD_DIRECTORY)/binutils/*;\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); cd $(BUILD_DIRECTORY)/binutils; $(BUILD_DIRECTORY)/binutils-$(BINUTILS_VERSION)/configure $(BINUTILS_CONFIGURATION) > $(BUILD_DIRECTORY)/binutils.log 2>&1 && make -j$(1) all >> $(BUILD_DIRECTORY)/binutils.log 2>&1 && make install >> $(BUILD_DIRECTORY)/binutils.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define bootstrap
+	printf "  > bootstrap gcc $(GCC_VERSION)\n";\
+	mkdir -p $(BUILD_DIRECTORY)/gcc;\
+	rm -rf $(BUILD_DIRECTORY)/gcc/*;\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); PATH=$(INSTALL_PREFIX)/bin:$$PATH; cd $(BUILD_DIRECTORY)/gcc; $(BUILD_DIRECTORY)/gcc-$(GCC_VERSION)/configure $(GCC_CONFIGURATION) > $(BUILD_DIRECTORY)/gcc.log 2>&1 && make -j$(1) all-gcc >> $(BUILD_DIRECTORY)/gcc.log 2>&1 && make install-gcc >> $(BUILD_DIRECTORY)/gcc.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define gcc
+	printf "  > gcc $(GCC_VERSION)\n";\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); PATH=$(INSTALL_PREFIX)/bin:$$PATH; cd $(BUILD_DIRECTORY)/gcc; make -j$(1) all >> $(BUILD_DIRECTORY)/gcc.log 2>&1 && make install >> $(BUILD_DIRECTORY)/gcc.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define gdb
+	printf "  > gdb $(GDB_VERSION)\n";\
+	mkdir -p $(BUILD_DIRECTORY)/gdb;\
+	rm -rf $(BUILD_DIRECTORY)/gdb/*;\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); cd $(BUILD_DIRECTORY)/gdb; $(BUILD_DIRECTORY)/gdb-$(GDB_VERSION)/configure $(GDB_CONFIGURATION) > $(BUILD_DIRECTORY)/gdb.log 2>&1 && make -j$(1) all >> $(BUILD_DIRECTORY)/gdb.log 2>&1 && make install >> $(BUILD_DIRECTORY)/gdb.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define newlib
+	printf "  > newlib $(NEWLIB_VERSION)\n";\
+	mkdir -p $(BUILD_DIRECTORY)/newlib;\
+	rm -rf $(BUILD_DIRECTORY)/newlib/*;\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); PATH=$(INSTALL_PREFIX)/bin:$$PATH; cd $(BUILD_DIRECTORY)/newlib; $(BUILD_DIRECTORY)/newlib-$(NEWLIB_VERSION)/configure $(NEWLIB_CONFIGURATION) > $(BUILD_DIRECTORY)/newlib.log 2>&1 && make -j$(1) all >> $(BUILD_DIRECTORY)/newlib.log 2>&1 && make install >> $(BUILD_DIRECTORY)/newlib.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define qemu
+	printf "  > qemu $(QEMU_VERSION)\n";\
+	mkdir -p $(BUILD_DIRECTORY)/qemu;\
+	rm -rf $(BUILD_DIRECTORY)/qemu/*;\
+	(CC=$(C_COMPILER); CXX=$(CXX_COMPILER); cd $(BUILD_DIRECTORY)/qemu; $(BUILD_DIRECTORY)/qemu-$(QEMU_VERSION)/configure $(QEMU_CONFIGURATION) > $(BUILD_DIRECTORY)/qemu.log 2>&1 && make -j$(1) all >> $(BUILD_DIRECTORY)/qemu.log 2>&1 && make install >> $(BUILD_DIRECTORY)/qemu.log 2>&1) || exit 1;
+endef
+#------------------------------------------------------------------------------
+define retrieve
+	printf "> Retrieving required sources\n";\
+	mkdir -p $(BUILD_DIRECTORY);\
+	$(foreach source, $(TOOLCHAIN_SOURCE),\
+		cd $(BUILD_DIRECTORY);\
+		printf "$(notdir $(source))\n";\
+		($(DOWNLOAD) $(source));\
+		tar -xf $(notdir $(source));\
+	)
+endef
+#------------------------------------------------------------------------------
+define retrieve_and_build
+	read -p "# How many CPU cores should be used? (1-[$(NUMBER_OF_CORES)]): " number_of_cores;\
+	regex="^[0-9]+$$";\
+	if [[ ! $$number_of_cores =~ $$regex ]] || [ $$number_of_cores -lt 1 ] || [ $$number_of_cores -gt $(NUMBER_OF_CORES) ]; then \
+		number_of_cores=$(NUMBER_OF_CORES);\
+	fi;\
+	$(call retrieve)\
+	printf "> Building toolchain for Poxim-V ($$number_of_cores core$(if $(findstring 1,$$number_of_cores),,s))\n";\
+	$(call binutils,$$number_of_cores)\
+	$(call bootstrap,$$number_of_cores)\
+	$(call newlib,$$number_of_cores)\
+	$(call gcc,$$number_of_cores)\
+	$(call gdb,$$number_of_cores)\
+	$(call qemu,$$number_of_cores)\
+	rm -rf $(BUILD_DIRECTORY);\
+	printf "> Install directory: $(subst $(ROOT_DIRECTORY)/,,$(INSTALL_PREFIX))\n";
+endef
+#------------------------------------------------------------------------------
+build:
+	$(call dependencies)\
+	if [ ! -d "$(INSTALL_PREFIX)" ]; then \
+		$(call retrieve_and_build)\
+	elif [ -d "$(INSTALL_PREFIX)" ]; then \
+		printf "# Do you wish to rebuild Poxim-V toolchain?\n";\
+		select option in "Yes" "No"; do \
+			if [[ -n $$option ]] && [[ $$option == "Yes" ]]; then \
+				rm -rf $(INSTALL_PREFIX);\
+				$(call retrieve_and_build)\
+			fi;\
+			exit 0;\
+		done;\
+	fi;
+#------------------------------------------------------------------------------
+clean:
+	rm -rf $(BUILD_DIRECTORY)
+#------------------------------------------------------------------------------
