@@ -396,45 +396,71 @@ void execute(CPU *cpu, uint32_t instruction, FILE *output) {
                         set_reg(cpu, rd, value);
                     }
                     break;
-                case 0x2:
-                    printf("slti x%u, x%u, %d\n", rd, rs1, imm);
-                    set_reg(cpu, rd, (int32_t)cpu->reg[rs1] < (int32_t)imm); 
+                case 0x2: {
+                    uint32_t imm12 = (instruction >> 20) & 0xFFF;
+                    uint32_t a = cpu->reg[rs1];
+                    uint32_t value = (int32_t)a < imm;
+
+                    trace_i_op(output, current_pc, "slti", rd, rs1, imm12, a, (uint32_t)imm, value, "<");
+                    set_reg(cpu, rd, value);
                     break;
-                case 0x3:
-                    printf("sltiu x%u, x%u, %d\n", rd, rs1, imm);
-                    set_reg(cpu, rd, (uint32_t)cpu->reg[rs1] < (uint32_t)imm); 
+                }
+                case 0x3: {
+                    uint32_t imm12 = (instruction >> 20) & 0xFFF;
+                    uint32_t a = cpu->reg[rs1];
+                    uint32_t value = a < (uint32_t)imm;
+
+                    trace_i_op(output, current_pc, "sltiu", rd, rs1, imm12, a, (uint32_t)imm, value, "<");
+                    set_reg(cpu, rd, value);
                     break;
-                case 0x4:
+                }
+                case 0x4: {
                     uint32_t imm12 = (instruction >> 20) & 0xFFF;
                     uint32_t a = cpu->reg[rs1];
                     uint32_t value = a ^ (uint32_t)imm;
                     trace_i_op(output, current_pc, "xori", rd, rs1, imm12, a, (uint32_t)imm, value, "^");
                     set_reg(cpu, rd, value);
                     break;
-                case 0x5:
+                }
+                case 0x5: {
                     if (upper == 0x00) {
-                        printf("srli x%u, x%u, %u\n", rd, rs1, shamt);
-                        set_reg(cpu, rd, cpu->reg[rs1] >> shamt);
+                        uint32_t a = cpu->reg[rs1];
+                        uint32_t value = a >> shamt;
+
+                        char operands[64];
+                        snprintf(operands, sizeof(operands), "%s,%s,%u", reg_name(rd), reg_name(rs1), shamt);
+                        trace_begin(output, current_pc, "srli", operands);
+                        fprintf(output, "%s=0x%08x>>%u=0x%08x\n", reg_name(rd), a, shamt, value);
+                        set_reg(cpu, rd, value);
                     }
                     if (upper == 0x20) {
-                        printf("srai x%u, x%u, %u\n", rd, rs1, shamt);
-                        set_reg(cpu, rd, (uint32_t)((int32_t)cpu->reg[rs1] >> shamt));
+                        uint32_t a = cpu->reg[rs1];
+                        uint32_t value = (uint32_t)((int32_t)a >> shamt);
+
+                        char operands[64];
+                        snprintf(operands, sizeof(operands), "%s,%s,%u", reg_name(rd), reg_name(rs1), shamt);
+                        trace_begin(output, current_pc, "srai", operands);
+                        fprintf(output, "%s=0x%08x>>%u=0x%08x\n", reg_name(rd), a, shamt, value);
+                        set_reg(cpu, rd, value);
                     }
                     break;
-                case 0x6:
+                }
+                case 0x6: {
                     uint32_t imm12 = (instruction >> 20) & 0xFFF;
                     uint32_t a = cpu->reg[rs1];
                     uint32_t value = a | (uint32_t)imm;
                     trace_i_op(output, current_pc, "ori", rd, rs1, imm12, a, (uint32_t)imm, value, "|");
                     set_reg(cpu, rd, value);
                     break;
-                case 0x7:
+                }
+                case 0x7: {
                     uint32_t imm12 = (instruction >> 20) & 0xFFF;
                     uint32_t a = cpu->reg[rs1];
                     uint32_t value = a & (uint32_t)imm;
                     trace_i_op(output, current_pc, "andi", rd, rs1, imm12, a, (uint32_t)imm, value, "&");
                     set_reg(cpu, rd, value);
                     break;
+                }
                 default:
                     return;
                     break;
